@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Peg Football - 25% FASTER</title>
+    <title>Peg Football - Balanced Speed</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; }
@@ -590,7 +590,7 @@
             <p style="font-size: 16px; color: rgba(255,255,255,0.7);">
                 Control your team, call plays, and score touchdowns!<br>
                 Compete against AI defenders in this action-packed game.<br>
-                <strong style="color: #4CAF50;">⚡ 25% FASTER VERSION ⚡</strong>
+                <strong style="color: #4CAF50;">⚡ BALANCED SPEED VERSION ⚡</strong>
             </p>
             <div class="credits">
                 <p>Made by Connor</p>
@@ -782,13 +782,19 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// ALL SPEEDS INCREASED BY 25%
+// BALANCED SPEEDS - Now frame-rate independent
 const CONFIG = {
     fieldLength: 1200, 
     fieldWidth: 530,
     playerScale: 9,
-    speeds: { qb: 1.44, wr: 1.81, ball: 5.63, sack: 1.5 },
-    physics: { gravity: 0.11, catchDist: 28 },
+    // Speeds are now in units per second (will be multiplied by deltaTime)
+    speeds: { 
+        qb: 60,      // Reduced from 1.44 (was 86.4 per second)
+        wr: 75,      // Reduced from 1.81 (was 108.6 per second)
+        ball: 250,   // Reduced from 5.63 (was 337.8 per second)
+        sack: 65     // Reduced from 1.5 (was 90 per second)
+    },
+    physics: { gravity: 5.0, catchDist: 28 }, // Gravity now per second
     aiSnapTime: 180
 };
 
@@ -815,6 +821,11 @@ const STATE = {
     timeRemaining: 3600,
     clockRunning: false
 };
+
+// Delta time tracking
+let lastTime = performance.now();
+const targetFPS = 60;
+const targetFrameTime = 1000 / targetFPS;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87CEEB); 
@@ -902,7 +913,6 @@ function createPlayer(x, z, color, role) {
 }
 
 function createSelectButton(player) {
-    // Create a floating ring above the player's head
     const ring = new THREE.Mesh(
         new THREE.RingGeometry(CONFIG.playerScale * 0.8, CONFIG.playerScale * 1.0, 32),
         new THREE.MeshBasicMaterial({
@@ -913,11 +923,10 @@ function createSelectButton(player) {
             depthTest: false
         })
     );
-    ring.rotation.x = -Math.PI / 2; // Lay flat horizontally
-    ring.position.set(0, CONFIG.playerScale * 3, 0); // Float above head
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(0, CONFIG.playerScale * 3, 0);
     player.mesh.add(ring);
     
-    // Add pulsing animation data
     ring.userData.animateRing = true;
     ring.userData.baseY = CONFIG.playerScale * 3;
     
@@ -1009,6 +1018,14 @@ function setupField(play) {
 }
 
 function update() {
+    // Calculate delta time for frame-rate independence
+    const currentTime = performance.now();
+    const rawDelta = (currentTime - lastTime) / 1000; // Convert to seconds
+    lastTime = currentTime;
+    
+    // Clamp delta time to prevent huge jumps
+    const deltaTime = Math.min(rawDelta, 0.1);
+    
     const isUserOff = STATE.possession === 'USER';
 
     // Animate selection rings
@@ -1097,7 +1114,7 @@ function update() {
                 spd = CONFIG.speeds.qb * 1.3;
             }
             
-            STATE.controlledPlayer.mesh.position.add(move.normalize().multiplyScalar(spd));
+            STATE.controlledPlayer.mesh.position.add(move.normalize().multiplyScalar(spd * deltaTime));
             
             if (isUserOff && STATE.controlledPlayer.role === 'QB' && !STATE.isRunPlay) {
                 if (STATE.controlledPlayer.mesh.position.z < STATE.los) {
@@ -1116,7 +1133,7 @@ function update() {
             
             if (actors.ball.owner === wr) {
                 if (isAIOffense) {
-                    wr.mesh.position.z -= CONFIG.speeds.wr * 1.5;
+                    wr.mesh.position.z -= CONFIG.speeds.wr * 1.5 * deltaTime;
                     
                     if (Math.abs(wr.mesh.position.x) > (CONFIG.fieldWidth/2 - 10)) {
                         wr.mesh.position.x = Math.sign(wr.mesh.position.x) * (CONFIG.fieldWidth/2 - 10);
@@ -1139,7 +1156,7 @@ function update() {
                 if (actors.ball.active && STATE.ballTarget) {
                     const dir = new THREE.Vector3().subVectors(STATE.ballTarget, wr.mesh.position);
                     dir.y = 0;
-                    wr.mesh.position.add(dir.normalize().multiplyScalar(CONFIG.speeds.wr));
+                    wr.mesh.position.add(dir.normalize().multiplyScalar(CONFIG.speeds.wr * deltaTime));
                     
                     if (Math.abs(wr.mesh.position.x) > (CONFIG.fieldWidth/2 - 10)) {
                         wr.mesh.position.x = Math.sign(wr.mesh.position.x) * (CONFIG.fieldWidth/2 - 10);
@@ -1150,7 +1167,7 @@ function update() {
                 if (STATE.isRunPlay) {
                     const dir = new THREE.Vector3().subVectors(actors.qb.mesh.position, wr.mesh.position);
                     dir.y = 0;
-                    wr.mesh.position.add(dir.normalize().multiplyScalar(CONFIG.speeds.wr));
+                    wr.mesh.position.add(dir.normalize().multiplyScalar(CONFIG.speeds.wr * deltaTime));
                     
                     if (Math.abs(wr.mesh.position.x) > (CONFIG.fieldWidth/2 - 10)) {
                         wr.mesh.position.x = Math.sign(wr.mesh.position.x) * (CONFIG.fieldWidth/2 - 10);
@@ -1166,7 +1183,7 @@ function update() {
                         if(dir.length() < 5) {
                             wr.routeIdx++;
                         } else {
-                            wr.mesh.position.add(dir.normalize().multiplyScalar(CONFIG.speeds.wr));
+                            wr.mesh.position.add(dir.normalize().multiplyScalar(CONFIG.speeds.wr * deltaTime));
                         }
                     } else { 
                         wr.finishedRoute = true; 
@@ -1180,7 +1197,7 @@ function update() {
                         if (wr.scrambleDir.lengthSq() === 0) {
                             wr.scrambleDir.set((Math.random() - 0.5), 0, -0.5).normalize();
                         }
-                        wr.mesh.position.add(wr.scrambleDir.clone().multiplyScalar(CONFIG.speeds.wr * 0.8));
+                        wr.mesh.position.add(wr.scrambleDir.clone().multiplyScalar(CONFIG.speeds.wr * 0.8 * deltaTime));
                     }
                 }
                 
@@ -1195,7 +1212,7 @@ function update() {
                 dir.y = 0;
                 
                 const wrSpeed = isAIOffense ? CONFIG.speeds.wr * 1.1 : CONFIG.speeds.wr;
-                wr.mesh.position.add(dir.normalize().multiplyScalar(wrSpeed));
+                wr.mesh.position.add(dir.normalize().multiplyScalar(wrSpeed * deltaTime));
                 
                 if (Math.abs(wr.mesh.position.x) > (CONFIG.fieldWidth/2 - 10)) {
                     wr.mesh.position.x = Math.sign(wr.mesh.position.x) * (CONFIG.fieldWidth/2 - 10);
@@ -1208,7 +1225,7 @@ function update() {
                 dir.y = 0;
                 
                 const wrSpeed = isAIOffense ? CONFIG.speeds.wr * 1.1 : CONFIG.speeds.wr;
-                wr.mesh.position.add(dir.normalize().multiplyScalar(wrSpeed));
+                wr.mesh.position.add(dir.normalize().multiplyScalar(wrSpeed * deltaTime));
                 
                 if (Math.abs(wr.mesh.position.x) > (CONFIG.fieldWidth/2 - 10)) {
                     wr.mesh.position.x = Math.sign(wr.mesh.position.x) * (CONFIG.fieldWidth/2 - 10);
@@ -1225,7 +1242,7 @@ function update() {
                         wr.routeIdx++;
                     } else {
                         const wrSpeed = isAIOffense ? CONFIG.speeds.wr * 1.1 : CONFIG.speeds.wr;
-                        wr.mesh.position.add(dir.normalize().multiplyScalar(wrSpeed));
+                        wr.mesh.position.add(dir.normalize().multiplyScalar(wrSpeed * deltaTime));
                     }
                 } else { 
                     wr.finishedRoute = true; 
@@ -1239,7 +1256,7 @@ function update() {
                     if (wr.scrambleDir.lengthSq() === 0) {
                         wr.scrambleDir.set((Math.random() - 0.5), 0, -0.5).normalize();
                     }
-                    wr.mesh.position.add(wr.scrambleDir.clone().multiplyScalar(CONFIG.speeds.wr * 0.8));
+                    wr.mesh.position.add(wr.scrambleDir.clone().multiplyScalar(CONFIG.speeds.wr * 0.8 * deltaTime));
                 }
             }
             
@@ -1264,12 +1281,10 @@ function update() {
             
             if (dl.rushTimer > 0) {
                 dl.rushTimer--;
-                // Blocking animation - sway side to side and lean forward
                 const time = Date.now() * 0.005;
                 const sway = Math.sin(time + dl.mesh.position.x) * 3;
                 dl.mesh.rotation.y = sway * 0.1;
                 
-                // Find nearest OL to engage with
                 let nearestOL = null;
                 let minDist = Infinity;
                 actors.ol.forEach(ol => {
@@ -1280,15 +1295,13 @@ function update() {
                     }
                 });
                 
-                // Push against OL slightly
                 if (nearestOL && minDist < 15) {
                     const dir = new THREE.Vector3().subVectors(nearestOL.mesh.position, dl.mesh.position);
                     dir.y = 0;
-                    dl.mesh.position.add(dir.normalize().multiplyScalar(0.3));
+                    dl.mesh.position.add(dir.normalize().multiplyScalar(0.3 * deltaTime * 60));
                 }
             }
             else {
-                // Reset rotation when rushing
                 dl.mesh.rotation.y = 0;
                 
                 const dir = new THREE.Vector3().subVectors(actors.qb.mesh.position, dl.mesh.position);
@@ -1300,23 +1313,21 @@ function update() {
                 } else if (!isUserOff && !isUserControlled) {
                     rushSpeed *= 0.75;
                 }
-                dl.mesh.position.add(dir.normalize().multiplyScalar(rushSpeed));
+                dl.mesh.position.add(dir.normalize().multiplyScalar(rushSpeed * deltaTime));
             }
         });
 
-        // Offensive Linemen Animation
         actors.ol.forEach(ol => {
             const time = Date.now() * 0.005;
             const sway = Math.sin(time + ol.mesh.position.x) * 3;
             ol.mesh.rotation.y = sway * 0.1;
             
-            // Push back slightly against DL pressure
             actors.dl.forEach(dl => {
                 const dist = ol.mesh.position.distanceTo(dl.mesh.position);
                 if (dist < 15 && dl.rushTimer <= 0) {
                     const dir = new THREE.Vector3().subVectors(ol.mesh.position, dl.mesh.position);
                     dir.y = 0;
-                    ol.mesh.position.add(dir.normalize().multiplyScalar(0.2));
+                    ol.mesh.position.add(dir.normalize().multiplyScalar(0.2 * deltaTime * 60));
                 }
             });
         });
@@ -1403,7 +1414,7 @@ function update() {
                         moveSpeed *= 0.7;
                     }
                 }
-                db.mesh.position.add(dir.normalize().multiplyScalar(moveSpeed));
+                db.mesh.position.add(dir.normalize().multiplyScalar(moveSpeed * deltaTime));
             }
             
             if(isUserOff && actors.ball.owner && actors.ball.owner === STATE.controlledPlayer) {
@@ -1420,8 +1431,8 @@ function update() {
         });
 
         if(actors.ball.active) {
-            actors.ball.velocity.y -= CONFIG.physics.gravity;
-            actors.ball.mesh.position.add(actors.ball.velocity);
+            actors.ball.velocity.y -= CONFIG.physics.gravity * deltaTime;
+            actors.ball.mesh.position.add(actors.ball.velocity.clone().multiplyScalar(deltaTime));
             if(actors.ball.mesh.position.y <= 0) endPlay("INCOMPLETE", 0, false, true);
             
             [...actors.wrs, ...actors.dbs].forEach(p => {
@@ -1466,7 +1477,6 @@ function updateCamera() {
     else if(actors.ball.active) focus.copy(actors.ball.mesh.position);
     
     let offsetZ = 200, offsetY = 140;
-    // Zoom out more for WR, DB, and DL
     if(STATE.controlledPlayer && (STATE.controlledPlayer.role === 'WR' || STATE.controlledPlayer.role === 'DB' || STATE.controlledPlayer.role === 'DL')) { 
         offsetZ = 160; 
         offsetY = 100; 
@@ -1614,12 +1624,10 @@ function endPlay(msg, pts, turnover=false, incomplete=false) {
     }
     STATE.los = nextLOS;
 
-    // Update team scores
     document.getElementById('team1-score').innerText = STATE.userScore;
     document.getElementById('team2-score').innerText = STATE.aiScore;
     document.getElementById('down').innerText = STATE.down + (STATE.down === 1 ? 'st' : STATE.down === 2 ? 'nd' : STATE.down === 3 ? 'rd' : 'th');
     
-    // Update possession highlight
     updatePossessionHighlight();
     
     setTimeout(() => { 
@@ -1643,7 +1651,6 @@ function endGame() {
     setTimeout(() => {
         document.getElementById('big-message').className = '';
         
-        // Reset game state
         STATE.possession = 'USER';
         STATE.userScore = 0;
         STATE.aiScore = 0;
@@ -1653,7 +1660,6 @@ function endGame() {
         STATE.timeRemaining = 3600;
         STATE.clockRunning = false;
         
-        // Update scoreboard
         document.getElementById('team1-score').innerText = '0';
         document.getElementById('team2-score').innerText = '0';
         document.getElementById('quarter').innerText = '1';
@@ -1661,7 +1667,6 @@ function endGame() {
         document.getElementById('down').innerText = '1st';
         updatePossessionHighlight();
         
-        // Return to team select screen
         document.getElementById('team-select-screen').style.display = 'flex';
     }, 5000);
 }
@@ -1691,7 +1696,11 @@ function setupDefenseMode() {
     setupField(STATE.play);
 }
 
-function animate() { requestAnimationFrame(animate); update(); renderer.render(scene, camera); }
+function animate() { 
+    requestAnimationFrame(animate); 
+    update(); 
+    renderer.render(scene, camera); 
+}
 animate();
 </script>
 </body>
