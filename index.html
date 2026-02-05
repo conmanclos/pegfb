@@ -1,0 +1,1696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Peg Football - BETA</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; }
+        
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; user-select: none; }
+        
+        #scoreboard {
+            position: absolute; 
+            bottom: 20px; 
+            left: 50%; 
+            transform: translateX(-50%);
+            display: flex; 
+            gap: 0; 
+            align-items: stretch;
+            color: white;
+            background: rgba(0,0,0,0.85);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.8);
+            border: 3px solid rgba(255,255,255,0.2);
+        }
+        
+        .team-score-box {
+            background: rgba(0,0,0,0.5);
+            padding: 15px 30px;
+            text-align: center;
+            min-width: 120px;
+            border: 3px solid;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .team-score-box.active {
+            filter: brightness(1.3);
+        }
+        
+        .team-score-label {
+            font-size: 10px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 3px;
+            color: rgba(255,255,255,0.8);
+        }
+        
+        .team-score-val {
+            font-size: 36px;
+            font-weight: 900;
+            font-family: monospace;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            line-height: 1;
+        }
+        
+        .center-info {
+            display: flex;
+            gap: 0;
+            align-items: stretch;
+        }
+        
+        .stat-box { 
+            text-align: center;
+            background: rgba(0,0,0,0.3);
+            padding: 15px 25px;
+            border-left: 1px solid rgba(255,255,255,0.1);
+            border-right: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-width: 90px;
+        }
+        
+        .stat-label { 
+            font-size: 9px; 
+            color: rgba(255,255,255,0.6); 
+            letter-spacing: 1px; 
+            text-transform: uppercase;
+            margin-bottom: 3px;
+        }
+        
+        .stat-val { 
+            font-size: 24px; 
+            font-weight: 900; 
+            font-family: monospace;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            line-height: 1;
+        }
+        
+        /* INFO BUTTON - Only in team select */
+        #info-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: rgba(0,0,0,0.7);
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 28px;
+            font-weight: 900;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            z-index: 1001;
+        }
+        
+        #info-button:hover {
+            background: rgba(255,255,255,0.2);
+            transform: scale(1.1);
+            border-color: rgba(255,255,255,0.6);
+        }
+        
+        #info-button.hidden {
+            display: none;
+        }
+        
+        /* INFO MODAL */
+        #info-modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 500px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 20px;
+            padding: 40px;
+            pointer-events: auto;
+            display: none;
+            box-shadow: 0 0 60px rgba(0,0,0,0.9);
+            text-align: center;
+            color: #fff;
+            z-index: 1002;
+        }
+        
+        #info-modal h2 {
+            font-size: 42px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            margin: 0 0 20px;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.8);
+        }
+        
+        #info-modal p {
+            font-size: 18px;
+            line-height: 1.6;
+            margin: 15px 0;
+            color: rgba(255,255,255,0.9);
+        }
+        
+        #info-modal .credits {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid rgba(255,255,255,0.2);
+        }
+        
+        #info-modal .credits p {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4CAF50;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        #close-info {
+            margin-top: 30px;
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.4);
+            color: #fff;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 12px 30px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        #close-info:hover {
+            background: rgba(255,255,255,0.4);
+            transform: scale(1.05);
+        }
+        
+        /* TEAM SELECT SCREEN */
+        #team-select-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            display: flex;
+            flex-direction: column;
+            pointer-events: auto;
+            z-index: 1000;
+        }
+        
+        #team-select-header {
+            text-align: center;
+            padding: 30px;
+            font-size: 48px;
+            font-weight: 900;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.3);
+        }
+        
+        #team-select-body {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 40px;
+            gap: 40px;
+        }
+        
+        .team-panel {
+            flex: 1;
+            height: 500px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 20px;
+            padding: 40px;
+            position: relative;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            transition: transform 0.3s;
+        }
+        
+        .team-panel:hover {
+            transform: scale(1.02);
+        }
+        
+        .team-label {
+            font-size: 24px;
+            font-weight: bold;
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .team-name {
+            font-size: 48px;
+            font-weight: 900;
+            color: #fff;
+            text-align: center;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            text-transform: uppercase;
+        }
+        
+        .team-rating {
+            font-size: 72px;
+            font-weight: 900;
+            color: #fff;
+            background: rgba(0,0,0,0.3);
+            padding: 20px 40px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .team-preview {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .player-preview {
+            width: 60px;
+            height: 80px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.4);
+        }
+        
+        .scroll-buttons {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .scroll-btn {
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.4);
+            color: #fff;
+            font-size: 24px;
+            font-weight: bold;
+            padding: 15px 30px;
+            border-radius: 10px;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: all 0.2s;
+        }
+        
+        .scroll-btn:hover {
+            background: rgba(255,255,255,0.4);
+            transform: scale(1.1);
+        }
+        
+        #vs-divider {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 30px;
+        }
+        
+        #vs-text {
+            font-size: 72px;
+            font-weight: 900;
+            color: #fff;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.8);
+        }
+        
+        #start-button {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            border: 3px solid #fff;
+            color: #fff;
+            font-size: 32px;
+            font-weight: 900;
+            padding: 20px 60px;
+            border-radius: 15px;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+        }
+        
+        #start-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.6);
+        }
+        
+        .team-instructions {
+            font-size: 16px;
+            color: rgba(255,255,255,0.6);
+            text-align: center;
+            margin-top: 10px;
+        }
+        
+        #playbook-menu {
+            position: absolute; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%);
+            width: 850px; 
+            height: 650px; 
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            border: 3px solid rgba(255,255,255,0.3);
+            pointer-events: auto; 
+            display: flex; 
+            flex-direction: column;
+            box-shadow: 0 0 60px rgba(0,0,0,0.9); 
+            border-radius: 20px; 
+            overflow: hidden;
+            display: none;
+        }
+        
+        #pb-header { 
+            padding: 30px; 
+            background: rgba(0,0,0,0.4); 
+            border-bottom: 2px solid rgba(255,255,255,0.2); 
+            text-align: center; 
+            color: white; 
+            font-weight: 900; 
+            font-size: 42px; 
+            text-transform: uppercase; 
+            letter-spacing: 4px;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.8);
+        }
+        
+        #mode-select {
+            display: flex; 
+            justify-content: center; 
+            gap: 20px; 
+            padding: 20px; 
+            background: rgba(0,0,0,0.3); 
+            border-bottom: 2px solid rgba(255,255,255,0.1);
+        }
+        
+        select { 
+            padding: 12px 20px; 
+            background: rgba(0,0,0,0.5); 
+            color: #fff; 
+            border: 2px solid rgba(255,255,255,0.3); 
+            font-weight: bold; 
+            cursor: pointer;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+        
+        select:hover {
+            background: rgba(255,255,255,0.2);
+            border-color: rgba(255,255,255,0.5);
+        }
+        
+        #pb-body { 
+            flex: 1; 
+            padding: 30px; 
+            overflow-y: auto; 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 20px; 
+        }
+        
+        .play-card {
+            background: rgba(0,0,0,0.4); 
+            border: 2px solid rgba(255,255,255,0.3); 
+            padding: 25px; 
+            cursor: pointer;
+            transition: all 0.3s; 
+            position: relative; 
+            overflow: hidden; 
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        
+        .play-card:hover { 
+            background: rgba(255,255,255,0.2); 
+            border-color: #fff; 
+            transform: scale(1.05);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+        }
+        
+        .play-card h3 { 
+            margin: 0 0 10px; 
+            color: #fff; 
+            font-size: 24px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .play-desc { 
+            font-size: 15px; 
+            color: rgba(255,255,255,0.8); 
+            line-height: 1.6; 
+        }
+
+        #pre-play-hud {
+            position: absolute; 
+            bottom: 140px; 
+            width: 100%; 
+            text-align: center;
+            color: #fff; 
+            font-size: 24px; 
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.8); 
+            opacity: 0.95;
+            display: none;
+            font-weight: bold;
+        }
+        
+        .key { 
+            background: rgba(0,0,0,0.6); 
+            padding: 8px 16px; 
+            border-radius: 10px; 
+            border: 2px solid rgba(255,255,255,0.4); 
+            font-family: monospace; 
+            color: #fff;
+            font-size: 20px;
+            font-weight: 900;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+        }
+
+        #defense-hud {
+            position: absolute; 
+            bottom: 140px; 
+            width: 100%; 
+            text-align: center;
+            color: #fff; 
+            font-size: 32px; 
+            text-shadow: 5px 5px 10px rgba(0,0,0,0.9),
+                         -2px -2px 5px rgba(0,0,0,0.9),
+                         2px -2px 5px rgba(0,0,0,0.9),
+                         -2px 2px 5px rgba(0,0,0,0.9); 
+            opacity: 0.95;
+            display: none; 
+            font-weight: 900;
+        }
+
+        #big-message {
+            position: absolute; 
+            top: 35%; 
+            width: 100%; 
+            text-align: center;
+            font-size: 100px; 
+            font-weight: 900; 
+            color: #fff; 
+            text-shadow: 5px 5px 10px rgba(0,0,0,0.9), 
+                         -2px -2px 5px rgba(0,0,0,0.9),
+                         2px -2px 5px rgba(0,0,0,0.9),
+                         -2px 2px 5px rgba(0,0,0,0.9); 
+            transform: scale(0); 
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 99;
+        }
+        #big-message.show { transform: scale(1); }
+        
+        #warning-msg {
+            position: absolute; 
+            top: 20%; 
+            width: 100%; 
+            text-align: center;
+            font-size: 48px; 
+            color: #ff3d00; 
+            font-weight: 900; 
+            display: none;
+            text-shadow: 5px 5px 10px rgba(0,0,0,0.9),
+                         -2px -2px 5px rgba(0,0,0,0.9),
+                         2px -2px 5px rgba(0,0,0,0.9),
+                         -2px 2px 5px rgba(0,0,0,0.9);
+        }
+    </style>
+</head>
+<body>
+
+<div id="ui-layer">
+    <!-- TEAM SELECT SCREEN -->
+    <div id="team-select-screen">
+        <!-- INFO BUTTON -->
+        <div id="info-button" onclick="toggleInfo()">ⓘ</div>
+        
+        <div id="team-select-header">TEAM SELECT</div>
+        <div id="team-select-body">
+            <!-- LEFT TEAM -->
+            <div class="team-panel" id="left-panel">
+                <div class="team-label">TEAM 1</div>
+                <div class="team-name" id="left-team-name">RED WARRIORS</div>
+                <div class="team-rating" id="left-rating">85</div>
+                <div class="team-preview">
+                    <div class="player-preview"></div>
+                    <div class="player-preview"></div>
+                    <div class="player-preview"></div>
+                    <div class="player-preview"></div>
+                </div>
+                <div class="scroll-buttons">
+                    <button class="scroll-btn" onclick="scrollTeam('left', -1)">▲</button>
+                    <button class="scroll-btn" onclick="scrollTeam('left', 1)">▼</button>
+                </div>
+                <div class="team-instructions">W/S or Arrow Buttons</div>
+            </div>
+            
+            <!-- CENTER -->
+            <div id="vs-divider">
+                <div id="vs-text">VS</div>
+                <button id="start-button" onclick="startGame()">ENTER GAME</button>
+                <div class="team-instructions">Press ENTER or Click Button</div>
+            </div>
+            
+            <!-- RIGHT TEAM -->
+            <div class="team-panel" id="right-panel">
+                <div class="team-label">TEAM 2</div>
+                <div class="team-name" id="right-team-name">ORANGE TIGERS</div>
+                <div class="team-rating" id="right-rating">83</div>
+                <div class="team-preview">
+                    <div class="player-preview"></div>
+                    <div class="player-preview"></div>
+                    <div class="player-preview"></div>
+                    <div class="player-preview"></div>
+                </div>
+                <div class="scroll-buttons">
+                    <button class="scroll-btn" onclick="scrollTeam('right', -1)">▲</button>
+                    <button class="scroll-btn" onclick="scrollTeam('right', 1)">▼</button>
+                </div>
+                <div class="team-instructions">Arrow Keys or Arrow Buttons</div>
+            </div>
+        </div>
+        
+        <!-- INFO MODAL -->
+        <div id="info-modal">
+            <h2>PEG FOOTBALL</h2>
+            <p>A 3D football game built with Three.js</p>
+            <p style="font-size: 16px; color: rgba(255,255,255,0.7);">
+                Control your team, call plays, and score touchdowns!<br>
+                Compete against AI defenders in this action-packed game.
+            </p>
+            <div class="credits">
+                <p>Made by Connor</p>
+            </div>
+            <button id="close-info" onclick="toggleInfo()">CLOSE</button>
+        </div>
+    </div>
+
+    <div id="scoreboard">
+        <div class="team-score-box" id="team1-score-box">
+            <div class="team-score-label" id="team1-label">TEAM 1</div>
+            <div class="team-score-val" id="team1-score">0</div>
+        </div>
+        
+        <div class="center-info">
+            <div class="stat-box">
+                <div class="stat-label">QUARTER</div>
+                <div class="stat-val" id="quarter">1</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">TIME</div>
+                <div class="stat-val" id="time">1:00</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">DOWN</div>
+                <div class="stat-val" id="down">1st</div>
+            </div>
+        </div>
+        
+        <div class="team-score-box" id="team2-score-box">
+            <div class="team-score-label" id="team2-label">TEAM 2</div>
+            <div class="team-score-val" id="team2-score">0</div>
+        </div>
+    </div>
+
+    <div id="pre-play-hud">
+        PRESS <span class="key">SPACE</span> TO SNAP <br>
+        <span style="font-size:16px; color:#ddd; margin-top:5px; display:block">WASD to Move | Click to Pass | Cross Line to Run</span>
+    </div>
+
+    <div id="defense-hud">
+        DEFENSE MODE <br>
+        <span style="font-size:16px; color:#fff; font-weight:normal;">Click a Blue Button to Select Player. AI Snapping soon...</span>
+    </div>
+
+    <div id="big-message">TOUCHDOWN</div>
+    <div id="warning-msg">ILLEGAL FORWARD PASS</div>
+    
+    <div id="playbook-menu">
+        <div id="pb-header">Select Play</div>
+        <div id="mode-select">
+            <label style="color:white; align-self:center;">DEFENSE DIFFICULTY:</label>
+            <select id="def-scheme">
+                <option value="tight">TIGHT (Normal)</option>
+                <option value="very_tight">VERY TIGHT (Hard)</option>
+                <option value="off">OFF (Easy)</option>
+            </select>
+        </div>
+        <div id="pb-body"></div>
+    </div>
+</div>
+
+<script>
+// INFO MODAL TOGGLE
+function toggleInfo() {
+    const modal = document.getElementById('info-modal');
+    modal.style.display = modal.style.display === 'none' ? 'block' : 'none';
+}
+
+// TEAM DEFINITIONS - Rainbow Colors
+const TEAMS = [
+    { name: "RED WARRIORS", color: 0xFF0000, rating: 85 },
+    { name: "ORANGE TIGERS", color: 0xFF8800, rating: 83 },
+    { name: "YELLOW SUNS", color: 0xFFFF00, rating: 88 },
+    { name: "GREEN DRAGONS", color: 0x00FF00, rating: 86 },
+    { name: "BLUE EAGLES", color: 0x0088FF, rating: 90 },
+    { name: "INDIGO SHARKS", color: 0x4B0082, rating: 84 },
+    { name: "VIOLET STORM", color: 0x8B00FF, rating: 87 },
+    { name: "PINK PANTHERS", color: 0xFF1493, rating: 82 }
+];
+
+const TEAM_SELECT = {
+    leftIndex: 0,
+    rightIndex: 1,
+    selectedLeft: null,
+    selectedRight: null
+};
+
+function scrollTeam(side, direction) {
+    if (side === 'left') {
+        TEAM_SELECT.leftIndex = (TEAM_SELECT.leftIndex + direction + TEAMS.length) % TEAMS.length;
+        updateTeamDisplay('left');
+    } else {
+        TEAM_SELECT.rightIndex = (TEAM_SELECT.rightIndex + direction + TEAMS.length) % TEAMS.length;
+        updateTeamDisplay('right');
+    }
+}
+
+function updateTeamDisplay(side) {
+    const index = side === 'left' ? TEAM_SELECT.leftIndex : TEAM_SELECT.rightIndex;
+    const team = TEAMS[index];
+    const panel = document.getElementById(`${side}-panel`);
+    const nameEl = document.getElementById(`${side}-team-name`);
+    const ratingEl = document.getElementById(`${side}-rating`);
+    
+    // Update colors and text
+    const rgb = hexToRgb(team.color);
+    panel.style.background = `linear-gradient(135deg, 
+        rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.3), 
+        rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.6))`;
+    panel.style.border = `3px solid rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+    
+    nameEl.textContent = team.name;
+    ratingEl.textContent = team.rating;
+    
+    // Update player preview colors
+    const previews = panel.querySelectorAll('.player-preview');
+    previews.forEach(preview => {
+        preview.style.background = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.6)`;
+        preview.style.border = `2px solid rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+    });
+}
+
+function hexToRgb(hex) {
+    return {
+        r: (hex >> 16) & 255,
+        g: (hex >> 8) & 255,
+        b: hex & 255
+    };
+}
+
+function startGame() {
+    TEAM_SELECT.selectedLeft = TEAMS[TEAM_SELECT.leftIndex];
+    TEAM_SELECT.selectedRight = TEAMS[TEAM_SELECT.rightIndex];
+    
+    // Update scoreboard with team info
+    updateScoreboardTeamColors();
+    
+    document.getElementById('team-select-screen').style.display = 'none';
+    showMenu();
+}
+
+function updateScoreboardTeamColors() {
+    const team1 = TEAM_SELECT.selectedLeft;
+    const team2 = TEAM_SELECT.selectedRight;
+    
+    const team1Box = document.getElementById('team1-score-box');
+    const team2Box = document.getElementById('team2-score-box');
+    
+    const rgb1 = hexToRgb(team1.color);
+    const rgb2 = hexToRgb(team2.color);
+    
+    team1Box.style.borderColor = `rgb(${rgb1.r}, ${rgb1.g}, ${rgb1.b})`;
+    team1Box.style.background = `rgba(${rgb1.r}, ${rgb1.g}, ${rgb1.b}, 0.3)`;
+    
+    team2Box.style.borderColor = `rgb(${rgb2.r}, ${rgb2.g}, ${rgb2.b})`;
+    team2Box.style.background = `rgba(${rgb2.r}, ${rgb2.g}, ${rgb2.b}, 0.3)`;
+    
+    document.getElementById('team1-label').textContent = team1.name;
+    document.getElementById('team2-label').textContent = team2.name;
+}
+
+function updatePossessionHighlight() {
+    const team1Box = document.getElementById('team1-score-box');
+    const team2Box = document.getElementById('team2-score-box');
+    
+    if (STATE.possession === 'USER') {
+        team1Box.classList.add('active');
+        team2Box.classList.remove('active');
+    } else {
+        team2Box.classList.add('active');
+        team1Box.classList.remove('active');
+    }
+}
+
+// Initialize team displays
+updateTeamDisplay('left');
+updateTeamDisplay('right');
+
+// Keyboard controls for team selection
+document.addEventListener('keydown', (e) => {
+    const screen = document.getElementById('team-select-screen');
+    if (screen.style.display !== 'none') {
+        if (e.key === 'w' || e.key === 'W') scrollTeam('left', -1);
+        if (e.key === 's' || e.key === 'S') scrollTeam('left', 1);
+        if (e.key === 'ArrowUp') scrollTeam('right', -1);
+        if (e.key === 'ArrowDown') scrollTeam('right', 1);
+        if (e.key === 'Enter') startGame();
+    }
+});
+
+const CONFIG = {
+    fieldLength: 1200, 
+    fieldWidth: 530,
+    playerScale: 9,
+    speeds: { qb: 2.3, wr: 2.9, ball: 9.0, sack: 2.4 },
+    physics: { gravity: 0.18, catchDist: 28 },
+    aiSnapTime: 120
+};
+
+const ENDZONE_Z_LINE = -CONFIG.fieldLength/2; 
+const STARTING_Z = 350;
+
+const STATE = {
+    possession: 'USER',
+    phase: 'MENU',
+    userScore: 0,
+    aiScore: 0,
+    down: 1,
+    los: STARTING_Z, 
+    controlledPlayer: null, 
+    mouse: new THREE.Vector2(),
+    raycaster: new THREE.Raycaster(),
+    play: null,
+    isRunPlay: false,
+    ballTarget: null, 
+    defMode: 'tight',
+    aiSnapTimer: 0,
+    selectionButtons: [],
+    quarter: 1,
+    timeRemaining: 3600,
+    clockRunning: false
+};
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87CEEB); 
+scene.fog = new THREE.Fog(0x87CEEB, 400, 2500);
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 1, 6000);
+const renderer = new THREE.WebGLRenderer({antialias: true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.1);
+dirLight.position.set(200, 800, 400);
+dirLight.castShadow = true;
+scene.add(dirLight, new THREE.AmbientLight(0xffffff, 0.5));
+
+function createStadium() {
+    const group = new THREE.Group();
+    const grass = new THREE.Mesh(new THREE.PlaneGeometry(CONFIG.fieldWidth+200, CONFIG.fieldLength+300), new THREE.MeshStandardMaterial({color: 0x2e7d32, roughness:1}));
+    grass.rotation.x = -Math.PI/2; grass.receiveShadow = true;
+    group.add(grass);
+
+    const ezGeo = new THREE.PlaneGeometry(CONFIG.fieldWidth, 100);
+    const ezMat = new THREE.MeshBasicMaterial({ color: 0x0d47a1 });
+    const ezMat2 = new THREE.MeshBasicMaterial({ color: 0xb71c1c });
+    const ez1 = new THREE.Mesh(ezGeo, ezMat); ez1.rotation.x = -Math.PI/2; ez1.position.set(0, 0.5, -CONFIG.fieldLength/2 - 50);
+    const ez2 = new THREE.Mesh(ezGeo, ezMat2); ez2.rotation.x = -Math.PI/2; ez2.position.set(0, 0.5, CONFIG.fieldLength/2 + 50);
+    group.add(ez1, ez2);
+
+    for(let i = -CONFIG.fieldLength/2; i <= CONFIG.fieldLength/2; i+=100) {
+        const line = new THREE.Mesh(new THREE.PlaneGeometry(CONFIG.fieldWidth, 2), new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.6}));
+        line.rotation.x = -Math.PI/2; line.position.set(0,0.6,i); group.add(line);
+    }
+    
+    const sideGeo = new THREE.PlaneGeometry(10, CONFIG.fieldLength + 200);
+    const sideMat = new THREE.MeshBasicMaterial({color: 0xffffff});
+    const lSide = new THREE.Mesh(sideGeo, sideMat); lSide.rotation.x = -Math.PI/2; lSide.position.set(-CONFIG.fieldWidth/2 - 5, 0.6, 0);
+    const rSide = new THREE.Mesh(sideGeo, sideMat); rSide.rotation.x = -Math.PI/2; rSide.position.set(CONFIG.fieldWidth/2 + 5, 0.6, 0);
+    group.add(lSide, rSide);
+
+    const createPost = (z, color) => {
+        const postMat = new THREE.MeshStandardMaterial({color: 0xffeb3b});
+        const g = new THREE.Group();
+        const base = new THREE.Mesh(new THREE.CylinderGeometry(2,2,40), postMat); base.position.y = 20;
+        const cross = new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.5,60), postMat); cross.rotation.z = Math.PI/2; cross.position.y = 40;
+        const left = new THREE.Mesh(new THREE.CylinderGeometry(1,1,60), postMat); left.position.set(-30, 70, 0);
+        const right = new THREE.Mesh(new THREE.CylinderGeometry(1,1,60), postMat); right.position.set(30, 70, 0);
+        g.add(base, cross, left, right);
+        g.position.z = z;
+        return g;
+    };
+    group.add(createPost(-CONFIG.fieldLength/2 - 100));
+    group.add(createPost(CONFIG.fieldLength/2 + 100));
+
+    scene.add(group);
+    return grass;
+}
+const groundMesh = createStadium();
+
+const reticle = new THREE.Mesh(new THREE.RingGeometry(4, 6, 32), new THREE.MeshBasicMaterial({color:0xffff00, side:THREE.DoubleSide}));
+reticle.rotation.x = -Math.PI/2; scene.add(reticle);
+
+const PLAYBOOK = [
+    { name: "Four Verticals", desc: "All receivers run deep.", routes: [[{x:-220, z:0}, {x:-220, z:-800}], [{x:-80, z:0}, {x:-80, z:-800}], [{x:80, z:0}, {x:80, z:-800}], [{x:220, z:0}, {x:220, z:-800}]] },
+    { name: "Slant Attack", desc: "Quick cuts inside.", routes: [[{x:-200, z:0}, {x:-200, z:-40}, {x:-50, z:-120}], [{x:200, z:0}, {x:200, z:-40}, {x:50, z:-120}], [{x:100, z:0}, {x:100, z:-20}, {x:220, z:-60}]] },
+    { name: "Out & Up", desc: "Fake out, then deep.", routes: [[{x:-200, z:0}, {x:-200, z:-80}, {x:-280, z:-100}, {x:-280, z:-400}], [{x:200, z:0}, {x:200, z:-80}, {x:280, z:-100}, {x:280, z:-400}]] },
+    { name: "Post Corners", desc: "Deep crossing routes.", routes: [[{x:-200, z:0}, {x:-100, z:-150}, {x:-250, z:-300}], [{x:200, z:0}, {x:100, z:-150}, {x:250, z:-300}], [{x:0, z:0}, {x:0, z:-50}, {x:0, z:-200}]] },
+    { name: "Hail Mary", desc: "Pray.", routes: [[{x:-220, z:0}, {x:-10, z:-700}], [{x:220, z:0}, {x:10, z:-700}], [{x:-100, z:0}, {x:-50, z:-600}]] }
+];
+
+let actors = { qb: null, wrs: [], dbs: [], dl: [], ol: [], ball: null };
+let playLines = [];
+let keys = { w:false, a:false, s:false, d:false };
+let activeDefenseRing = null;
+
+function createPlayer(x, z, color, role) {
+    const geo = new THREE.CylinderGeometry(CONFIG.playerScale/2, CONFIG.playerScale/2, CONFIG.playerScale*2, 12);
+    const mat = new THREE.MeshStandardMaterial({color: color});
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, CONFIG.playerScale, z); mesh.castShadow = true;
+    const pad = new THREE.Mesh(new THREE.BoxGeometry(CONFIG.playerScale*1.4, CONFIG.playerScale/2, CONFIG.playerScale), mat);
+    pad.position.y = CONFIG.playerScale/2; mesh.add(pad);
+    scene.add(mesh);
+    return { mesh, role, routeIdx: 0, route: [], finishedRoute: false, scrambleTimer: 0, scrambleDir: new THREE.Vector3(), rushTimer: (Math.random() * 60) + 120, targetWR: null, tackleTimer: 0 };
+}
+
+function createSelectButton(player) {
+    // Create a floating ring above the player's head
+    const ring = new THREE.Mesh(
+        new THREE.RingGeometry(CONFIG.playerScale * 0.8, CONFIG.playerScale * 1.0, 32),
+        new THREE.MeshBasicMaterial({
+            color: 0x00d2ff,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.9,
+            depthTest: false
+        })
+    );
+    ring.rotation.x = -Math.PI / 2; // Lay flat horizontally
+    ring.position.set(0, CONFIG.playerScale * 3, 0); // Float above head
+    player.mesh.add(ring);
+    
+    // Add pulsing animation data
+    ring.userData.animateRing = true;
+    ring.userData.baseY = CONFIG.playerScale * 3;
+    
+    return ring;
+}
+
+function setupField(play) {
+    if(actors.qb) scene.remove(actors.qb.mesh);
+    [...actors.wrs, ...actors.dbs, ...actors.dl, ...actors.ol].forEach(p => scene.remove(p.mesh));
+    if(actors.ball) scene.remove(actors.ball.mesh);
+    if(activeDefenseRing) scene.remove(activeDefenseRing);
+    activeDefenseRing = null;
+    playLines.forEach(l => scene.remove(l));
+    playLines = []; actors = { qb:null, wrs:[], dbs:[], dl:[], ol:[], ball:null };
+    STATE.selectionButtons = [];
+    STATE.ballTarget = null;
+    STATE.isRunPlay = false;
+
+    const isUserOff = STATE.possession === 'USER';
+    const offColor = isUserOff ? TEAM_SELECT.selectedLeft.color : TEAM_SELECT.selectedRight.color;
+    const defColor = isUserOff ? TEAM_SELECT.selectedRight.color : TEAM_SELECT.selectedLeft.color;
+
+    actors.qb = createPlayer(0, STATE.los + 60, offColor, 'QB');
+    
+    [-30, -15, 0, 15, 30].forEach(x => actors.ol.push(createPlayer(x, STATE.los + 10, offColor, 'OL')));
+    
+    play.routes.forEach((route, i) => {
+        const p = route[0];
+        const wr = createPlayer(p.x, STATE.los + p.z, offColor, 'WR');
+        wr.route = route; actors.wrs.push(wr);
+        if (isUserOff) {
+            const pts = route.map(r => new THREE.Vector3(r.x, 2, STATE.los + r.z));
+            const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({color:0xffff00}));
+            scene.add(line); playLines.push(line);
+        }
+    });
+
+    [-40, -10, 10, 40].forEach(x => actors.dl.push(createPlayer(x, STATE.los - 15, defColor, 'DL')));
+    
+    actors.wrs.forEach(wr => {
+        const db = createPlayer(wr.mesh.position.x, wr.mesh.position.z - 40, defColor, 'DB');
+        db.targetWR = wr; actors.dbs.push(db);
+    });
+    actors.dbs.push(createPlayer(-80, STATE.los - 200, defColor, 'S'));
+    actors.dbs.push(createPlayer(80, STATE.los - 200, defColor, 'S'));
+
+    if (!isUserOff) {
+        STATE.controlledPlayer = actors.dbs[0];
+        actors.dbs.forEach((db, idx) => {
+            const btn = createSelectButton(db);
+            if(idx === 0) {
+                btn.material.color.setHex(0x00ff00);
+                btn.material.opacity = 1.0;
+            }
+            STATE.selectionButtons.push({ sprite: btn, player: db });
+        });
+        actors.dl.forEach(dl => {
+            const btn = createSelectButton(dl);
+            STATE.selectionButtons.push({ sprite: btn, player: dl });
+        });
+        
+        activeDefenseRing = new THREE.Mesh(
+            new THREE.RingGeometry(12, 15, 32),
+            new THREE.MeshBasicMaterial({
+                color: 0x00ff00,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.9,
+                depthTest: false
+            })
+        );
+        activeDefenseRing.rotation.x = -Math.PI / 2;
+        activeDefenseRing.visible = false;
+        scene.add(activeDefenseRing);
+        
+        STATE.aiSnapTimer = CONFIG.aiSnapTime;
+        document.getElementById('defense-hud').style.display = 'block';
+    } else {
+        STATE.controlledPlayer = actors.qb;
+        document.getElementById('defense-hud').style.display = 'none';
+    }
+
+    const ballMesh = new THREE.Mesh(new THREE.SphereGeometry(CONFIG.playerScale/2.2), new THREE.MeshStandardMaterial({color:0x5D4037}));
+    scene.add(ballMesh);
+    actors.ball = { mesh: ballMesh, velocity: new THREE.Vector3(), active: false, owner: actors.qb };
+    
+    updateCamera();
+    updatePossessionHighlight();
+}
+
+function update() {
+    const isUserOff = STATE.possession === 'USER';
+
+    // Animate selection rings
+    if (STATE.phase === 'PRE_PLAY' && STATE.selectionButtons.length > 0) {
+        STATE.selectionButtons.forEach(btn => {
+            if (btn.sprite && btn.sprite.userData.animateRing) {
+                const time = Date.now() * 0.003;
+                const scale = 1.0 + Math.sin(time) * 0.15;
+                btn.sprite.scale.set(scale, scale, 1);
+                btn.sprite.position.y = btn.sprite.userData.baseY + Math.sin(time * 1.5) * 2;
+            }
+        });
+    }
+
+    if (STATE.clockRunning && STATE.phase === 'ACTIVE') {
+        STATE.timeRemaining--;
+        
+        const seconds = Math.floor(STATE.timeRemaining / 60);
+        const frames = STATE.timeRemaining % 60;
+        document.getElementById('time').innerText = `${seconds}:${frames.toString().padStart(2, '0')}`;
+        
+        if (STATE.timeRemaining <= 0) {
+            STATE.clockRunning = false;
+            STATE.quarter++;
+            
+            if (STATE.quarter > 4) {
+                endGame();
+                return;
+            } else {
+                STATE.timeRemaining = 3600;
+                document.getElementById('quarter').innerText = STATE.quarter;
+                endPlay("END OF QUARTER", 0);
+                return;
+            }
+        }
+    }
+
+    if (!isUserOff && STATE.phase === 'PRE_PLAY') {
+        STATE.aiSnapTimer--;
+        if(STATE.aiSnapTimer <= 0) {
+            STATE.phase = 'ACTIVE';
+            STATE.clockRunning = true;
+            STATE.selectionButtons.forEach(b => b.player.mesh.remove(b.sprite));
+            if(activeDefenseRing) activeDefenseRing.visible = true;
+            document.getElementById('defense-hud').innerHTML = "DEFEND!";
+            setTimeout(performAIThrow, 2500);
+        }
+    }
+    
+    if(!isUserOff && STATE.phase === 'ACTIVE' && STATE.controlledPlayer && activeDefenseRing) {
+        activeDefenseRing.position.set(
+            STATE.controlledPlayer.mesh.position.x,
+            1,
+            STATE.controlledPlayer.mesh.position.z
+        );
+    }
+
+    if (STATE.phase === 'ACTIVE') {
+        
+        if (STATE.controlledPlayer) {
+            const p = STATE.controlledPlayer.mesh.position;
+            if (Math.abs(p.x) > CONFIG.fieldWidth / 2) {
+                endPlay("OUT OF BOUNDS", 0);
+                return;
+            }
+        }
+
+        let move = new THREE.Vector3(0,0,0);
+        const isUserDefense = !isUserOff;
+        
+        if(isUserDefense) {
+            if(keys.w) move.z += 1; if(keys.s) move.z -= 1;
+            if(keys.a) move.x += 1; if(keys.d) move.x -= 1;
+        } else {
+            if(keys.w) move.z -= 1; if(keys.s) move.z += 1;
+            if(keys.a) move.x -= 1; if(keys.d) move.x += 1;
+        }
+        
+        if (STATE.controlledPlayer) {
+            let spd = STATE.controlledPlayer.role === 'QB' ? CONFIG.speeds.qb : CONFIG.speeds.wr;
+            
+            if(STATE.controlledPlayer.role === 'WR' && actors.ball.owner === STATE.controlledPlayer) {
+                spd = CONFIG.speeds.wr * 1.2;
+            }
+            if(STATE.controlledPlayer.role === 'QB' && STATE.isRunPlay) {
+                spd = CONFIG.speeds.qb * 1.3;
+            }
+            
+            STATE.controlledPlayer.mesh.position.add(move.normalize().multiplyScalar(spd));
+            
+            if (isUserOff && STATE.controlledPlayer.role === 'QB' && !STATE.isRunPlay) {
+                if (STATE.controlledPlayer.mesh.position.z < STATE.los) {
+                    STATE.isRunPlay = true; reticle.visible = false;
+                }
+            }
+            if (isUserOff && STATE.controlledPlayer.mesh.position.z < ENDZONE_Z_LINE) {
+                endPlay("TOUCHDOWN!", 7);
+            } else if (!isUserOff && actors.ball.owner && actors.ball.owner.role === 'WR' && actors.ball.owner.mesh.position.z < ENDZONE_Z_LINE) {
+                endPlay("OPPONENT TOUCHDOWN", 7);
+            }
+        }
+
+        actors.wrs.forEach(wr => {
+            const isAIOffense = (STATE.possession === 'AI');
+            
+            if (actors.ball.owner === wr) {
+                if (isAIOffense) {
+                    wr.mesh.position.z -= CONFIG.speeds.wr * 1.5;
+                    
+                    if (Math.abs(wr.mesh.position.x) > (CONFIG.fieldWidth/2 - 10)) {
+                        wr.mesh.position.x = Math.sign(wr.mesh.position.x) * (CONFIG.fieldWidth/2 - 10);
+                    }
+                    
+                    if (wr.mesh.position.z <= ENDZONE_Z_LINE) {
+                        endPlay("OPPONENT TOUCHDOWN", 7);
+                    }
+                    
+                    return;
+                } else {
+                    if (wr.mesh.position.z <= ENDZONE_Z_LINE) {
+                        endPlay("TOUCHDOWN!", 7);
+                    }
+                    return;
+                }
+            }
+            
+            if (!isAIOffense) {
+                if (actors.ball.active && STATE.ballTarget) {
+                    const dir = new THREE.Vector3().subVectors(STATE.ballTarget, wr.mesh.position);
+                    dir.y = 0;
+                    wr.mesh.position.add(dir.normalize().multiplyScalar(CONFIG.speeds.wr));
+                    
+                    if (Math.abs(wr.mesh.position.x) > (CONFIG.fieldWidth/2 - 10)) {
+                        wr.mesh.position.x = Math.sign(wr.mesh.position.x) * (CONFIG.fieldWidth/2 - 10);
+                    }
+                    return;
+                }
+                
+                if (STATE.isRunPlay) {
+                    const dir = new THREE.Vector3().subVectors(actors.qb.mesh.position, wr.mesh.position);
+                    dir.y = 0;
+                    wr.mesh.position.add(dir.normalize().multiplyScalar(CONFIG.speeds.wr));
+                    
+                    if (Math.abs(wr.mesh.position.x) > (CONFIG.fieldWidth/2 - 10)) {
+                        wr.mesh.position.x = Math.sign(wr.mesh.position.x) * (CONFIG.fieldWidth/2 - 10);
+                    }
+                    return;
+                }
+                
+                if (!wr.finishedRoute) {
+                    const target = wr.route[wr.routeIdx + 1];
+                    if (target) {
+                        const worldT = new THREE.Vector3(target.x, CONFIG.playerScale, STATE.los + target.z);
+                        const dir = new THREE.Vector3().subVectors(worldT, wr.mesh.position);
+                        if(dir.length() < 5) {
+                            wr.routeIdx++;
+                        } else {
+                            wr.mesh.position.add(dir.normalize().multiplyScalar(CONFIG.speeds.wr));
+                        }
+                    } else { 
+                        wr.finishedRoute = true; 
+                        wr.scrambleTimer = 60;
+                    }
+                } 
+                else {
+                    if (wr.scrambleTimer > 0) {
+                        wr.scrambleTimer--;
+                    } else {
+                        if (wr.scrambleDir.lengthSq() === 0) {
+                            wr.scrambleDir.set((Math.random() - 0.5), 0, -0.5).normalize();
+                        }
+                        wr.mesh.position.add(wr.scrambleDir.clone().multiplyScalar(CONFIG.speeds.wr * 0.8));
+                    }
+                }
+                
+                if (Math.abs(wr.mesh.position.x) > (CONFIG.fieldWidth/2 - 10)) {
+                    wr.mesh.position.x = Math.sign(wr.mesh.position.x) * (CONFIG.fieldWidth/2 - 10);
+                }
+                return;
+            }
+
+            if (actors.ball.active && STATE.ballTarget) {
+                const dir = new THREE.Vector3().subVectors(STATE.ballTarget, wr.mesh.position);
+                dir.y = 0;
+                
+                const wrSpeed = isAIOffense ? CONFIG.speeds.wr * 1.1 : CONFIG.speeds.wr;
+                wr.mesh.position.add(dir.normalize().multiplyScalar(wrSpeed));
+                
+                if (Math.abs(wr.mesh.position.x) > (CONFIG.fieldWidth/2 - 10)) {
+                    wr.mesh.position.x = Math.sign(wr.mesh.position.x) * (CONFIG.fieldWidth/2 - 10);
+                }
+                return;
+            }
+            
+            if (STATE.isRunPlay) {
+                const dir = new THREE.Vector3().subVectors(actors.qb.mesh.position, wr.mesh.position);
+                dir.y = 0;
+                
+                const wrSpeed = isAIOffense ? CONFIG.speeds.wr * 1.1 : CONFIG.speeds.wr;
+                wr.mesh.position.add(dir.normalize().multiplyScalar(wrSpeed));
+                
+                if (Math.abs(wr.mesh.position.x) > (CONFIG.fieldWidth/2 - 10)) {
+                    wr.mesh.position.x = Math.sign(wr.mesh.position.x) * (CONFIG.fieldWidth/2 - 10);
+                }
+                return;
+            }
+            
+            if (!wr.finishedRoute) {
+                const target = wr.route[wr.routeIdx + 1];
+                if (target) {
+                    const worldT = new THREE.Vector3(target.x, CONFIG.playerScale, STATE.los + target.z);
+                    const dir = new THREE.Vector3().subVectors(worldT, wr.mesh.position);
+                    if(dir.length() < 5) {
+                        wr.routeIdx++;
+                    } else {
+                        const wrSpeed = isAIOffense ? CONFIG.speeds.wr * 1.1 : CONFIG.speeds.wr;
+                        wr.mesh.position.add(dir.normalize().multiplyScalar(wrSpeed));
+                    }
+                } else { 
+                    wr.finishedRoute = true; 
+                    wr.scrambleTimer = 60;
+                }
+            } 
+            else {
+                if (wr.scrambleTimer > 0) {
+                    wr.scrambleTimer--;
+                } else {
+                    if (wr.scrambleDir.lengthSq() === 0) {
+                        wr.scrambleDir.set((Math.random() - 0.5), 0, -0.5).normalize();
+                    }
+                    wr.mesh.position.add(wr.scrambleDir.clone().multiplyScalar(CONFIG.speeds.wr * 0.8));
+                }
+            }
+            
+            if (Math.abs(wr.mesh.position.x) > (CONFIG.fieldWidth/2 - 10)) {
+                wr.mesh.position.x = Math.sign(wr.mesh.position.x) * (CONFIG.fieldWidth/2 - 10);
+            }
+        });
+
+        actors.dl.forEach(dl => {
+            const isUserControlled = (dl === STATE.controlledPlayer);
+            const isAIOffense = (STATE.possession === 'AI');
+            
+            if (actors.ball.owner === actors.qb) {
+                const sackRadius = isAIOffense ? 10 : 12;
+                if (dl.mesh.position.distanceTo(actors.qb.mesh.position) < sackRadius) {
+                    endPlay("SACKED!", 0);
+                    return;
+                }
+            }
+            
+            if (isUserControlled) return;
+            
+            if (dl.rushTimer > 0) {
+                dl.rushTimer--;
+                // Blocking animation - sway side to side and lean forward
+                const time = Date.now() * 0.005;
+                const sway = Math.sin(time + dl.mesh.position.x) * 3;
+                dl.mesh.rotation.y = sway * 0.1;
+                
+                // Find nearest OL to engage with
+                let nearestOL = null;
+                let minDist = Infinity;
+                actors.ol.forEach(ol => {
+                    const dist = dl.mesh.position.distanceTo(ol.mesh.position);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        nearestOL = ol;
+                    }
+                });
+                
+                // Push against OL slightly
+                if (nearestOL && minDist < 15) {
+                    const dir = new THREE.Vector3().subVectors(nearestOL.mesh.position, dl.mesh.position);
+                    dir.y = 0;
+                    dl.mesh.position.add(dir.normalize().multiplyScalar(0.3));
+                }
+            }
+            else {
+                // Reset rotation when rushing
+                dl.mesh.rotation.y = 0;
+                
+                const dir = new THREE.Vector3().subVectors(actors.qb.mesh.position, dl.mesh.position);
+                dir.y = 0;
+                
+                let rushSpeed = CONFIG.speeds.sack;
+                if (isAIOffense && !isUserControlled) {
+                    rushSpeed *= 0.6;
+                } else if (!isUserOff && !isUserControlled) {
+                    rushSpeed *= 0.75;
+                }
+                dl.mesh.position.add(dir.normalize().multiplyScalar(rushSpeed));
+            }
+        });
+
+        // Offensive Linemen Animation
+        actors.ol.forEach(ol => {
+            const time = Date.now() * 0.005;
+            const sway = Math.sin(time + ol.mesh.position.x) * 3;
+            ol.mesh.rotation.y = sway * 0.1;
+            
+            // Push back slightly against DL pressure
+            actors.dl.forEach(dl => {
+                const dist = ol.mesh.position.distanceTo(dl.mesh.position);
+                if (dist < 15 && dl.rushTimer <= 0) {
+                    const dir = new THREE.Vector3().subVectors(ol.mesh.position, dl.mesh.position);
+                    dir.y = 0;
+                    ol.mesh.position.add(dir.normalize().multiplyScalar(0.2));
+                }
+            });
+        });
+
+        actors.dbs.forEach(db => {
+            const isUserControlled = (db === STATE.controlledPlayer);
+            const isAIOffense = (STATE.possession === 'AI');
+            
+            if(actors.ball.active) {
+                const hDist = new THREE.Vector2(db.mesh.position.x, db.mesh.position.z).distanceTo(new THREE.Vector2(actors.ball.mesh.position.x, actors.ball.mesh.position.z));
+                const verticalDist = Math.abs(actors.ball.mesh.position.y - db.mesh.position.y);
+                
+                let catchRadius, heightWindow;
+                if (isAIOffense) {
+                    catchRadius = isUserControlled ? 20 : 12;
+                    heightWindow = isUserControlled ? 25 : 18;
+                } else {
+                    catchRadius = isUserControlled ? 20 : 15;
+                    heightWindow = isUserControlled ? 30 : 25;
+                }
+                
+                if(hDist < catchRadius && verticalDist < heightWindow) {
+                    endPlay("INTERCEPTED!", 0, true);
+                    return;
+                }
+            }
+            
+            if(actors.ball.owner && actors.ball.owner.role === 'WR') {
+                const distance = db.mesh.position.distanceTo(actors.ball.owner.mesh.position);
+                const tackleRadius = isAIOffense ? 8 : 10;
+                const tackleDelay = isAIOffense ? 20 : 15;
+                
+                if (distance < tackleRadius) {
+                    if (db.tackleTimer++ > tackleDelay) {
+                        endPlay("TACKLED", 0);
+                        db.tackleTimer = 0;
+                        return;
+                    }
+                } else {
+                    db.tackleTimer = 0;
+                }
+            }
+            
+            if (isUserControlled) return;
+
+            let targetPos = new THREE.Vector3();
+            let universalTarget = (actors.ball.active && STATE.ballTarget) ? STATE.ballTarget : (STATE.isRunPlay ? actors.qb.mesh.position : null);
+
+            if (universalTarget) {
+                targetPos.copy(universalTarget);
+            } else {
+                if (db.role === 'S') {
+                    targetPos.set(db.mesh.position.x > 0 ? 60 : -60, CONFIG.playerScale, STATE.los - 180);
+                } else {
+                    const wrPos = db.targetWR.mesh.position;
+                    let offset = 10;
+                    
+                    if(isUserOff) {
+                        if(STATE.defMode === 'very_tight') offset = 0;
+                        if(STATE.defMode === 'off') offset = 30;
+                    } else {
+                        offset = 25;
+                    }
+                    
+                    targetPos.copy(wrPos).add(new THREE.Vector3(0,0,offset));
+                }
+            }
+            
+            targetPos.y = CONFIG.playerScale; 
+            const dist = db.mesh.position.distanceTo(targetPos);
+            if(dist > 5) {
+                const dir = new THREE.Vector3().subVectors(targetPos, db.mesh.position);
+                dir.y = 0; 
+                
+                let moveSpeed = CONFIG.speeds.wr;
+                if(isAIOffense && !isUserControlled) {
+                    moveSpeed *= 0.75;
+                    if(actors.ball.active) {
+                        moveSpeed *= 0.7;
+                    }
+                } else if(!isUserOff && !isUserControlled) {
+                    moveSpeed *= 0.85;
+                    if(actors.ball.active) {
+                        moveSpeed *= 0.7;
+                    }
+                }
+                db.mesh.position.add(dir.normalize().multiplyScalar(moveSpeed));
+            }
+            
+            if(isUserOff && actors.ball.owner && actors.ball.owner === STATE.controlledPlayer) {
+                const distance = db.mesh.position.distanceTo(STATE.controlledPlayer.mesh.position);
+                if (distance < 10) {
+                    if (db.tackleTimer++ > 15) {
+                        endPlay("TACKLED", 0);
+                        db.tackleTimer = 0;
+                    }
+                } else {
+                    db.tackleTimer = 0;
+                }
+            }
+        });
+
+        if(actors.ball.active) {
+            actors.ball.velocity.y -= CONFIG.physics.gravity;
+            actors.ball.mesh.position.add(actors.ball.velocity);
+            if(actors.ball.mesh.position.y <= 0) endPlay("INCOMPLETE", 0, false, true);
+            
+            [...actors.wrs, ...actors.dbs].forEach(p => {
+                const isAIOffense = (STATE.possession === 'AI');
+                const catchRadius = (isAIOffense && p.role === 'WR') ? CONFIG.physics.catchDist * 1.3 : CONFIG.physics.catchDist;
+                
+                if(p.mesh.position.distanceTo(actors.ball.mesh.position) < catchRadius) {
+                    if (p.role === 'WR') {
+                        actors.ball.active = false;
+                        actors.ball.owner = p;
+                        if(STATE.possession === 'USER') STATE.controlledPlayer = p;
+                        actors.ball.velocity.set(0,0,0);
+                        STATE.ballTarget = null;
+                    } 
+                }
+            });
+        } else if (actors.ball.owner) {
+            actors.ball.mesh.position.copy(actors.ball.owner.mesh.position).y += 5;
+        }
+        updateCamera();
+    }
+}
+
+function performAIThrow() {
+    if(STATE.phase !== 'ACTIVE' || STATE.possession === 'USER') return;
+    
+    const targetWR = actors.wrs[Math.floor(Math.random() * actors.wrs.length)];
+    const leadPos = targetWR.mesh.position.clone().add(new THREE.Vector3(0,0,-40)); 
+    
+    actors.ball.owner = null; actors.ball.active = true;
+    STATE.ballTarget = leadPos.clone();
+    
+    const s = actors.qb.mesh.position.clone(); s.y=10;
+    const time = s.distanceTo(leadPos) / CONFIG.speeds.ball;
+    actors.ball.velocity.subVectors(leadPos,s).divideScalar(time);
+    actors.ball.velocity.y = 0.5 * CONFIG.physics.gravity * time;
+}
+
+function updateCamera() {
+    let focus = new THREE.Vector3(0,0,STATE.los);
+    if(STATE.controlledPlayer) focus.copy(STATE.controlledPlayer.mesh.position);
+    else if(actors.ball.active) focus.copy(actors.ball.mesh.position);
+    
+    let offsetZ = 200, offsetY = 140;
+    // Zoom out more for WR, DB, and DL
+    if(STATE.controlledPlayer && (STATE.controlledPlayer.role === 'WR' || STATE.controlledPlayer.role === 'DB' || STATE.controlledPlayer.role === 'DL')) { 
+        offsetZ = 160; 
+        offsetY = 100; 
+    }
+    
+    const isUserDefense = STATE.possession === 'AI';
+    
+    if(STATE.phase === 'PRE_PLAY') {
+        const qbPos = actors.qb ? actors.qb.mesh.position : new THREE.Vector3(0, 0, STATE.los);
+        camera.position.lerp(new THREE.Vector3(qbPos.x, 450, qbPos.z + 50), 0.1);
+        camera.lookAt(qbPos.x, 0, qbPos.z - 200);
+    } else {
+        if(isUserDefense) {
+            offsetZ = -offsetZ;
+        }
+        
+        camera.position.lerp(new THREE.Vector3(focus.x, offsetY, focus.z + offsetZ), 0.1);
+        
+        const lookAheadZ = isUserDefense ? 50 : -50;
+        camera.lookAt(focus.x, 0, focus.z + lookAheadZ);
+    }
+}
+
+window.onkeydown = (e) => {
+    keys[e.key.toLowerCase()] = true;
+    if(e.code==='Space' && STATE.phase==='PRE_PLAY' && STATE.possession==='USER') {
+        STATE.phase = 'ACTIVE'; 
+        STATE.clockRunning = true;
+        playLines.forEach(l => l.visible = false);
+        document.getElementById('pre-play-hud').style.display='none';
+        reticle.visible = true;
+    }
+};
+window.onkeyup = (e) => keys[e.key.toLowerCase()] = false;
+
+window.onmousemove = (e) => {
+    STATE.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    STATE.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    
+    if(STATE.phase !== 'POST_PLAY' && !STATE.isRunPlay && STATE.possession === 'USER') {
+        STATE.raycaster.setFromCamera(STATE.mouse, camera);
+        const ints = STATE.raycaster.intersectObject(groundMesh);
+        if(ints.length>0) { reticle.position.copy(ints[0].point); reticle.position.y=2; }
+    }
+};
+
+window.onmousedown = () => {
+    if(STATE.phase==='ACTIVE' && STATE.possession==='USER' && actors.ball.owner===actors.qb) {
+        if (STATE.isRunPlay) {
+            const w = document.getElementById('warning-msg');
+            w.style.display = 'block'; w.innerText = "ILLEGAL FORWARD PASS!";
+            setTimeout(() => w.style.display='none', 1000);
+            return;
+        }
+        actors.ball.owner = null; actors.ball.active = true;
+        const t = reticle.position.clone();
+        STATE.ballTarget = t.clone();
+        const s = actors.qb.mesh.position.clone(); s.y=10;
+        const time = s.distanceTo(t) / CONFIG.speeds.ball;
+        actors.ball.velocity.subVectors(t,s).divideScalar(time);
+        actors.ball.velocity.y = 0.5 * CONFIG.physics.gravity * time;
+    }
+
+    if(STATE.possession==='AI' && (STATE.phase==='PRE_PLAY' || STATE.phase==='ACTIVE')) {
+        STATE.raycaster.setFromCamera(STATE.mouse, camera);
+        
+        if(STATE.phase === 'PRE_PLAY' && STATE.selectionButtons.length > 0) {
+            const ringMeshes = STATE.selectionButtons.map(b => b.sprite);
+            const intersects = STATE.raycaster.intersectObjects(ringMeshes, false);
+            
+            if(intersects.length > 0) {
+                const hitRing = intersects[0].object;
+                const btnObj = STATE.selectionButtons.find(b => b.sprite === hitRing);
+                if(btnObj) {
+                    STATE.controlledPlayer = btnObj.player;
+                    STATE.selectionButtons.forEach(b => {
+                        b.sprite.material.color.setHex(0x00d2ff);
+                        b.sprite.material.opacity = 0.9;
+                    });
+                    hitRing.material.color.setHex(0x00ff00);
+                    hitRing.material.opacity = 1.0;
+                }
+                return;
+            }
+        }
+        
+        if(STATE.phase === 'ACTIVE') {
+            const allDefensivePlayers = [...actors.dbs, ...actors.dl];
+            const playerMeshes = allDefensivePlayers.map(p => p.mesh);
+            const intersects = STATE.raycaster.intersectObjects(playerMeshes, true);
+            
+            if(intersects.length > 0) {
+                const clickedMesh = intersects[0].object;
+                const clickedPlayer = allDefensivePlayers.find(p => 
+                    p.mesh === clickedMesh || p.mesh.children.includes(clickedMesh)
+                );
+                
+                if(clickedPlayer) {
+                    STATE.controlledPlayer = clickedPlayer;
+                }
+            }
+        }
+    }
+};
+
+function endPlay(msg, pts, turnover=false, incomplete=false) {
+    if(STATE.phase==='POST_PLAY') return;
+    STATE.phase = 'POST_PLAY';
+    STATE.clockRunning = false;
+    document.getElementById('big-message').innerText = msg;
+    document.getElementById('big-message').className = 'show';
+    
+    if (STATE.possession === 'USER') STATE.userScore += pts;
+    else STATE.aiScore += pts;
+
+    let switchPossession = false;
+    let nextLOS = STATE.los;
+
+    if (msg.includes("TOUCHDOWN")) {
+        switchPossession = true;
+        nextLOS = STARTING_Z;
+    }
+    else if (turnover) {
+        switchPossession = true;
+        nextLOS = -actors.ball.mesh.position.z;
+    }
+    else {
+        STATE.down++;
+        if (incomplete || msg === "OUT OF BOUNDS") {
+        } else {
+            nextLOS = actors.ball.mesh.position.z;
+        }
+
+        if (STATE.down > 4) {
+            msg = "TURNOVER ON DOWNS";
+            document.getElementById('big-message').innerText = msg;
+            switchPossession = true;
+            nextLOS = STARTING_Z;
+        }
+    }
+
+    if (switchPossession) {
+        STATE.possession = STATE.possession === 'USER' ? 'AI' : 'USER';
+        STATE.down = 1;
+    }
+    STATE.los = nextLOS;
+
+    // Update team scores
+    document.getElementById('team1-score').innerText = STATE.userScore;
+    document.getElementById('team2-score').innerText = STATE.aiScore;
+    document.getElementById('down').innerText = STATE.down + (STATE.down === 1 ? 'st' : STATE.down === 2 ? 'nd' : STATE.down === 3 ? 'rd' : 'th');
+    
+    // Update possession highlight
+    updatePossessionHighlight();
+    
+    setTimeout(() => { 
+        document.getElementById('big-message').className = ''; 
+        if (STATE.possession === 'USER') showMenu();
+        else setupDefenseMode();
+    }, 3000);
+}
+
+function endGame() {
+    STATE.phase = 'POST_PLAY';
+    STATE.clockRunning = false;
+    
+    let winnerMsg = "TIE GAME!";
+    if (STATE.userScore > STATE.aiScore) winnerMsg = "YOU WIN!";
+    else if (STATE.aiScore > STATE.userScore) winnerMsg = "YOU LOSE!";
+    
+    document.getElementById('big-message').innerText = `GAME OVER! ${winnerMsg}`;
+    document.getElementById('big-message').className = 'show';
+    
+    setTimeout(() => {
+        document.getElementById('big-message').className = '';
+        
+        // Reset game state
+        STATE.possession = 'USER';
+        STATE.userScore = 0;
+        STATE.aiScore = 0;
+        STATE.down = 1;
+        STATE.los = STARTING_Z;
+        STATE.quarter = 1;
+        STATE.timeRemaining = 3600;
+        STATE.clockRunning = false;
+        
+        // Update scoreboard
+        document.getElementById('team1-score').innerText = '0';
+        document.getElementById('team2-score').innerText = '0';
+        document.getElementById('quarter').innerText = '1';
+        document.getElementById('time').innerText = '1:00';
+        document.getElementById('down').innerText = '1st';
+        updatePossessionHighlight();
+        
+        // Return to team select screen
+        document.getElementById('team-select-screen').style.display = 'flex';
+    }, 5000);
+}
+
+function showMenu() {
+    STATE.phase = 'MENU';
+    document.getElementById('playbook-menu').style.display = 'flex';
+    document.getElementById('defense-hud').style.display = 'none';
+    const b = document.getElementById('pb-body'); b.innerHTML = '';
+    PLAYBOOK.forEach(p => {
+        const d = document.createElement('div'); d.className='play-card';
+        d.innerHTML = `<h3>${p.name}</h3><div class="play-desc">${p.desc}</div>`;
+        d.onclick = () => {
+            STATE.play = p; STATE.phase = 'PRE_PLAY';
+            document.getElementById('playbook-menu').style.display = 'none';
+            document.getElementById('pre-play-hud').style.display = 'block';
+            setupField(p);
+        }
+        b.appendChild(d);
+    });
+}
+
+function setupDefenseMode() {
+    STATE.play = PLAYBOOK[Math.floor(Math.random() * PLAYBOOK.length)];
+    STATE.phase = 'PRE_PLAY';
+    document.getElementById('playbook-menu').style.display = 'none';
+    setupField(STATE.play);
+}
+
+function animate() { requestAnimationFrame(animate); update(); renderer.render(scene, camera); }
+animate();
+</script>
+</body>
+</html>
