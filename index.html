@@ -791,10 +791,10 @@ const CONFIG = {
     speeds: { 
         qb: 60,      // Reduced from 1.44 (was 86.4 per second)
         wr: 75,      // Reduced from 1.81 (was 108.6 per second)
-        ball: 250,   // Reduced from 5.63 (was 337.8 per second)
+        ball: 400,   // Faster pass speed (was 250)
         sack: 65     // Reduced from 1.5 (was 90 per second)
     },
-    physics: { gravity: 5.0, catchDist: 28 }, // Gravity now per second
+    physics: { gravity: 6.5, catchDist: 28 }, // Increased gravity for more arc
     aiSnapTime: 180
 };
 
@@ -1468,7 +1468,8 @@ function performAIThrow() {
     const s = actors.qb.mesh.position.clone(); s.y=10;
     const time = s.distanceTo(leadPos) / CONFIG.speeds.ball;
     actors.ball.velocity.subVectors(leadPos,s).divideScalar(time);
-    actors.ball.velocity.y = 0.5 * CONFIG.physics.gravity * time;
+    // Higher arc for lob pass - multiply gravity component by higher factor
+    actors.ball.velocity.y = 0.65 * CONFIG.physics.gravity * time;
 }
 
 function updateCamera() {
@@ -1537,7 +1538,8 @@ window.onmousedown = () => {
         const s = actors.qb.mesh.position.clone(); s.y=10;
         const time = s.distanceTo(t) / CONFIG.speeds.ball;
         actors.ball.velocity.subVectors(t,s).divideScalar(time);
-        actors.ball.velocity.y = 0.5 * CONFIG.physics.gravity * time;
+        // Higher arc for lob pass - multiply gravity component by higher factor
+        actors.ball.velocity.y = 0.65 * CONFIG.physics.gravity * time;
     }
 
     if(STATE.possession==='AI' && (STATE.phase==='PRE_PLAY' || STATE.phase==='ACTIVE')) {
