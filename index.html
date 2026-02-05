@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Peg Football - BETA</title>
+    <title>Peg Football - 25% FASTER</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; }
@@ -589,7 +589,8 @@
             <p>A 3D football game built with Three.js</p>
             <p style="font-size: 16px; color: rgba(255,255,255,0.7);">
                 Control your team, call plays, and score touchdowns!<br>
-                Compete against AI defenders in this action-packed game.
+                Compete against AI defenders in this action-packed game.<br>
+                <strong style="color: #4CAF50;">⚡ 25% FASTER VERSION ⚡</strong>
             </p>
             <div class="credits">
                 <p>Made by Connor</p>
@@ -781,13 +782,14 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+// ALL SPEEDS INCREASED BY 25%
 const CONFIG = {
     fieldLength: 1200, 
     fieldWidth: 530,
     playerScale: 9,
-    speeds: { qb: 1.15, wr: 1.45, ball: 4.5, sack: 1.2 },
-    physics: { gravity: 0.09, catchDist: 28 },
-    aiSnapTime: 240
+    speeds: { qb: 1.44, wr: 1.81, ball: 5.63, sack: 1.5 },
+    physics: { gravity: 0.11, catchDist: 28 },
+    aiSnapTime: 180
 };
 
 const ENDZONE_Z_LINE = -CONFIG.fieldLength/2; 
@@ -896,7 +898,7 @@ function createPlayer(x, z, color, role) {
     const pad = new THREE.Mesh(new THREE.BoxGeometry(CONFIG.playerScale*1.4, CONFIG.playerScale/2, CONFIG.playerScale), mat);
     pad.position.y = CONFIG.playerScale/2; mesh.add(pad);
     scene.add(mesh);
-    return { mesh, role, routeIdx: 0, route: [], finishedRoute: false, scrambleTimer: 0, scrambleDir: new THREE.Vector3(), rushTimer: (Math.random() * 60) + 120, targetWR: null, tackleTimer: 0 };
+    return { mesh, role, routeIdx: 0, route: [], finishedRoute: false, scrambleTimer: 0, scrambleDir: new THREE.Vector3(), rushTimer: (Math.random() * 45) + 90, targetWR: null, tackleTimer: 0 };
 }
 
 function createSelectButton(player) {
@@ -1052,7 +1054,7 @@ function update() {
             STATE.selectionButtons.forEach(b => b.player.mesh.remove(b.sprite));
             if(activeDefenseRing) activeDefenseRing.visible = true;
             document.getElementById('defense-hud').innerHTML = "DEFEND!";
-            setTimeout(performAIThrow, 2500);
+            setTimeout(performAIThrow, 2000);
         }
     }
     
@@ -1345,7 +1347,7 @@ function update() {
             if(actors.ball.owner && actors.ball.owner.role === 'WR') {
                 const distance = db.mesh.position.distanceTo(actors.ball.owner.mesh.position);
                 const tackleRadius = isAIOffense ? 8 : 10;
-                const tackleDelay = isAIOffense ? 20 : 15;
+                const tackleDelay = isAIOffense ? 16 : 12;
                 
                 if (distance < tackleRadius) {
                     if (db.tackleTimer++ > tackleDelay) {
@@ -1407,7 +1409,7 @@ function update() {
             if(isUserOff && actors.ball.owner && actors.ball.owner === STATE.controlledPlayer) {
                 const distance = db.mesh.position.distanceTo(STATE.controlledPlayer.mesh.position);
                 if (distance < 10) {
-                    if (db.tackleTimer++ > 15) {
+                    if (db.tackleTimer++ > 12) {
                         endPlay("TACKLED", 0);
                         db.tackleTimer = 0;
                     }
